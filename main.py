@@ -617,7 +617,7 @@ def down(gyro):
 
 
 def big_O_by_crane(gyro):
-    
+
     # This is driving to the crane and doing two missions: M02 and M12.
 
     # Drives out quickly and then slower for more accuracy.
@@ -625,13 +625,13 @@ def big_O_by_crane(gyro):
     drive_inches_gyro(1.5, 10)
     time.sleep(1.0)
     drive_inches(-2, 20)
-    
+
     # Turns extra if we need it.
     right_extra = 0
     #right_extra = 10
     if right_extra > 0:
         my_turn_right(20, right_extra)
-    
+
     # Raises side holder, or medium motor.
     side_motor.on_for_degrees(speed=20, degrees=109)
 
@@ -639,14 +639,14 @@ def big_O_by_crane(gyro):
     my_turn_left(20, 10 + right_extra)
     drive_inches(-2, 20)
     my_turn_right(20, 10)
-    
+
     # Returns to the home base.
     drive_inches(-12.5, 40)
     my_turn_right(20, 90)
     drive_inches(-20, 40)
     drive_inches(2, 40)
     my_turn_left(40, 80)
-   
+
 
 def red_ending(gyro):
     """
@@ -770,7 +770,7 @@ def mission_tan_blocks_plus_before_20200109(gyro):
     # swing front pointer 20 left, (20 right to straighten then) 20 right
     # tjs
     swing_turn = 16
-    my_turn_left(15, turn_extra + swing_turn / 2)
+    my_turn_left(15, turn_extra)
     lifter.on_for_degrees(-50, 90, brake=False)
     my_turn_left(15, swing_turn / 2)
     # my_turn_right(15, swing_turn * 2)
@@ -793,11 +793,11 @@ def mission_tan_blocks_plus_before_20200109(gyro):
 
 
 def mission_tan_blocks_plus(gyro):
-  
-    # This mission does these seven missions: M01, M07, M08, M09, M11, M12 and M13. 
 
-    # Drives out for a good start, then folows the black line to the red circle. 
-    # Leaves red blocks and train(M11) in circle. 
+    # This mission does these seven missions: M01, M07, M08, M09, M11, M12 and M13.
+
+    # Drives out for a good start, then folows the black line to the red circle.
+    # Leaves red blocks and train(M11) in circle.
     drive_out_black_line(raise_side=True)
 
     # Get pointed toward the tan circle
@@ -805,7 +805,7 @@ def mission_tan_blocks_plus(gyro):
     drive_inches(4, 20)
     my_turn_left(speed=15, angle=10)
     align_accurate(10, num_passes=3)
-    
+
     # forward to tan circle
     tan_dist = 10
     drive_inches(tan_dist, 30)
@@ -825,7 +825,7 @@ def mission_tan_blocks_plus(gyro):
     lifter.on_for_rotations(50, 1, brake=False)
     drive_inches(-10, speed=20)
     lifter.on_for_rotations(-50, 1, brake=False)
-    
+
     # M09_safety factor
     turn_extra = 12
     my_turn_right(20, 30 + turn_extra)
@@ -840,7 +840,7 @@ def mission_tan_blocks_plus(gyro):
     drive_inches(building_drive_more, 10)
     my_turn_left(15, swing_turn / 2)
     drive_inches(-1 - building_drive_more, 20)
-    
+
     # M07 Swing
     # point towards the swing
     my_turn_right(20, swing_turn + 90)
@@ -851,7 +851,7 @@ def mission_tan_blocks_plus(gyro):
     # push swing by turning a little
     my_turn_left(20, 30)
     my_turn_right(20, 15)
-    
+
     # backup 6 inches for safe turn
     drive_inches(-6, 30)
     lifter.on_for_degrees(50, 600, brake=False)
@@ -863,11 +863,11 @@ def mission_tan_blocks_plus(gyro):
     # get color sensors away from black line
     drive_inches(1.5, 20)
     # get to ramp line
-    my_turn_left(20, 90)
+    my_turn_left(10, 90)
     drive_inches(4, 20)
     align_accurate(10, num_passes=2)
-    drive_inches(2, 15)
-    my_turn_right(20, 90)
+    drive_inches(1.75, 15)
+    my_turn_right(10, 90)
     drive_inches(10, 15)
 
     # Lower lift for less tippyness.
@@ -878,8 +878,8 @@ def mission_tan_blocks_plus(gyro):
     align_accurate(10, num_passes=2)
     drive_inches(-2, 20)
     drive_inches_gyro(46, 40)
-    
-    # TODO Lock The Motors 
+
+    # TODO Lock The Motors
 
 
 def mission_red_blocks(gyro):
