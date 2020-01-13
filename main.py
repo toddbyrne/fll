@@ -617,31 +617,36 @@ def down(gyro):
 
 
 def big_O_by_crane(gyro):
-    # did not go straight at speed 20
-    # the other launch starts at speed 15
+    
+    # This is driving to the crane and doing two missions: M02 and M12.
+
+    # Drives out quickly and then slower for more accuracy.
     drive_inches_gyro(dist=25, speed=20)
     drive_inches_gyro(1.5, 10)
     time.sleep(1.0)
     drive_inches(-2, 20)
+    
+    # Turns extra if we need it.
     right_extra = 0
     #right_extra = 10
     if right_extra > 0:
-      my_turn_right(20, right_extra)
+        my_turn_right(20, right_extra)
+    
+    # Raises side holder, or medium motor.
     side_motor.on_for_degrees(speed=20, degrees=109)
+
+    # Attempts to not crash into the load.
     my_turn_left(20, 10 + right_extra)
     drive_inches(-2, 20)
     my_turn_right(20, 10)
+    
+    # Returns to the home base.
     drive_inches(-12.5, 40)
     my_turn_right(20, 90)
     drive_inches(-20, 40)
     drive_inches(2, 40)
     my_turn_left(40, 80)
-   # drive_inches(-9, 30)
-   # my_turn_right(50, 90)
-   # drive_inches(-13, 30)
-    #drive_inches(1)
-   # my_turn_left(50, 90)
-
+   
 
 def red_ending(gyro):
     """
@@ -786,24 +791,33 @@ def mission_tan_blocks_plus_before_20200109(gyro):
     # drive_inches(20, -40)
     # my_turn_left(80, 80)
 
-# add dropping red blocks and driving up ramp
+
 def mission_tan_blocks_plus(gyro):
+  
+    # This mission does these seven missions: M01, M07, M08, M09, M11, M12 and M13. 
+
+    # Drives out for a good start, then folows the black line to the red circle. 
+    # Leaves red blocks and train(M11) in circle. 
     drive_out_black_line(raise_side=True)
+
+    # Get pointed toward the tan circle
     my_turn_left(speed=15, angle=20)
     drive_inches(4, 20)
     my_turn_left(speed=15, angle=10)
-    #align_color("White")
     align_accurate(10, num_passes=3)
+    
     # forward to tan circle
     tan_dist = 10
     drive_inches(tan_dist, 30)
     my_turn_left(20, 90)
     drive_inches(2, 20)
     align_color("White")
+    # Stop at the line and goes a little bit further.
     align_accurate(10, num_passes=3)
     tan_push = 5.25
     drive_inches(tan_push, 20)
     drive_inches(-tan_push + 0.5, 20)
+
     # M08_Elevator
     my_turn_right(20, 90)
     # flip the elevator
@@ -811,15 +825,11 @@ def mission_tan_blocks_plus(gyro):
     lifter.on_for_rotations(50, 1, brake=False)
     drive_inches(-10, speed=20)
     lifter.on_for_rotations(-50, 1, brake=False)
-    # Mo9_safety factor
-    # was 17
-    #turn_extra = 17
-    # XXX Tweak - last tried 13
-    # 9 worked good when closer
+    
+    # M09_safety factor
     turn_extra = 12
     my_turn_right(20, 30 + turn_extra)
     lifter.on_for_degrees(50, 120, brake=False)
-    # was 5 but not far enough
     drive_inches(6, 20)
     # swing front pointer 20 left, (20 right to straighten then) 20 right
     swing_turn = 20
@@ -829,9 +839,9 @@ def mission_tan_blocks_plus(gyro):
     building_drive_more = 0.25
     drive_inches(building_drive_more, 10)
     my_turn_left(15, swing_turn / 2)
-    # my_turn_right(15, swing_turn * 2)
-    # my_turn_right(15, swing_turn)
     drive_inches(-1 - building_drive_more, 20)
+    
+    # M07 Swing
     # point towards the swing
     my_turn_right(20, swing_turn + 90)
     # lift arm to push swing
@@ -839,26 +849,16 @@ def mission_tan_blocks_plus(gyro):
     # drive to swing
     drive_inches(3.5, 30)
     # push swing by turning a little
-    # was 45
     my_turn_left(20, 30)
     my_turn_right(20, 15)
-    # old program - get home
-    # drive_inches(-2, 30)
-    # my_turn_left(15, 55)
-    # drive_inches(-65, 60)
-    # drive_inches(1, 30)
-    # my_turn_right(50, 75)
-
-    # Spencer 1/9/2020
-    # backup 6 inches for safe turn apot
+    
+    # backup 6 inches for safe turn
     drive_inches(-6, 30)
     lifter.on_for_degrees(50, 600, brake=False)
+
+    # M01 Elevated Places
     # align on line perp to ramp line
-    # watch out for the lettering over white
-    #align_color("White")
     my_turn_left(speed=20, angle=180)
-    # DON'T DRIVE - CLOSE TO LINE!!!
-    #drive_inches(2, 20)
     align_accurate(10, num_passes=3)
     # get color sensors away from black line
     drive_inches(1.5, 20)
@@ -866,23 +866,20 @@ def mission_tan_blocks_plus(gyro):
     my_turn_left(20, 90)
     drive_inches(4, 20)
     align_accurate(10, num_passes=2)
-    # originally 1.5
     drive_inches(2, 15)
     my_turn_right(20, 90)
     drive_inches(10, 15)
 
+    # Lower lift for less tippyness.
     lifter.on_for_degrees(50, -300, brake=False)
-    # go up ramp, copied from red ending
+    # go up ramp
 
     # The Big Ending
     align_accurate(10, num_passes=2)
     drive_inches(-2, 20)
-    # was 35 but now stick at top
-    #drive_inches(35, 35)
-    # drive up ramp use gyro to go straight
-    # add 12" extra and stick at top
-    #drive_inches(47, 35)
     drive_inches_gyro(46, 40)
+    
+    # TODO Lock The Motors 
 
 
 def mission_red_blocks(gyro):
@@ -926,6 +923,10 @@ def gyro_reset(gyro):
     time.sleep(GYRO_RESET_WAIT)
 
 def drop_frame(gyro):
+    """
+    Lowers side motor in between missions
+    """
+
     side_motor.on_for_degrees(speed=20, degrees=-109)
 
 def test_drive_straigh_gyro(gyro):
