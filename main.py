@@ -18,8 +18,7 @@ import time
 
 logging.basicConfig(level=logging.DEBUG)
 
-# Set true to follow black line
-LINE_USE_COLOR_SENSOR = True
+# Use the gyro for turns
 TURN_WITH_GYRO = True
 
 GYRO_RESET_WAIT = 4
@@ -259,9 +258,7 @@ def align_left(c_name, speed=10):
     while left_running:
         name_l = color_left.color_name
         name_r = color_right.color_name
-        rli_left = -1
-        rli_right = -1
-        t = "rli: {} {}\n{} {}".format(rli_left, rli_right, name_l, name_r)
+        t = "{} {}".format(name_l, name_r)
         show(t)
         if name_l == c_name:
             m1.off()
@@ -269,7 +266,7 @@ def align_left(c_name, speed=10):
             left_running = False
 
 
-def align_color(c_name, speed=10, black_thresh=20):
+def align_color(c_name, speed=10):
     m1 = LargeMotor(OUTPUT_A)
     m2 = LargeMotor(OUTPUT_D)
     m1.on(speed)
@@ -279,9 +276,7 @@ def align_color(c_name, speed=10, black_thresh=20):
     while left_running or right_running:
         name_l = color_left.color_name
         name_r = color_right.color_name
-        rli_left = -1
-        rli_right = -1
-        t = "rli: {} {}\n{} {}".format(rli_left, rli_right, name_l, name_r)
+        t = "{} {}".format(name_l, name_r)
         show(t)
         if name_l == c_name:
             m1.off()
@@ -291,15 +286,15 @@ def align_color(c_name, speed=10, black_thresh=20):
             right_running = False
 
 
-def align_black(speed=10, black_thresh=20):
-    align_color("Black", speed, black_thresh)
+def align_black(speed=10):
+    align_color("Black", speed)
 
 
-def align_accurate(speed=10, num_passes=2, black_thresh=20):
-    align_color("Black", speed, black_thresh)
+def align_accurate(speed=10, num_passes=2):
+    align_color("Black", speed)
     for i in range(num_passes - 1):
-        align_color("White", -speed / 2, black_thresh)
-        align_color("Black", speed / 2, black_thresh)
+        align_color("White", -speed / 2)
+        align_color("Black", speed / 2)
 
 
 def align_forever(gyro=None):
@@ -348,7 +343,7 @@ def beep_and_wait_for_button():
     s.beep()
 
 
-def motor_test():
+def motor_test1():
     m = LargeMotor(OUTPUT_D)
     m.on_for_rotations(SpeedPercent(75), 5)
     # hoi bois!!!!
@@ -524,14 +519,14 @@ def my_turn_left(speed=20, angle=90):
     if TURN_WITH_GYRO:
         turn_degrees_gyro(gyro, -angle, speed, do_correction=False)
     else:
-        tank_diff.turn_left(speed, degrees)
+        tank_diff.turn_left(speed, angle)
 
 
 def my_turn_right(speed=20, angle=90):
     if TURN_WITH_GYRO:
         turn_degrees_gyro(gyro, angle, speed, do_correction=False)
     else:
-        tank_diff.turn_right(speed, degrees)
+        tank_diff.turn_right(speed, angle)
 
 
 def turn_degrees(gyro, deg, speed=15):
@@ -626,17 +621,11 @@ def big_O_by_crane(gyro):
     time.sleep(1.0)
     drive_inches(-2, 20)
 
-    # Turns extra if we need it.
-    right_extra = 0
-    #right_extra = 10
-    if right_extra > 0:
-        my_turn_right(20, right_extra)
-
     # Raises side holder, or medium motor.
     side_motor.on_for_degrees(speed=20, degrees=109)
 
     # Attempts to not crash into the load.
-    my_turn_left(20, 10 + right_extra)
+    my_turn_left(20, 10)
     drive_inches(-2, 20)
     my_turn_right(20, 10)
 
@@ -701,7 +690,7 @@ def drive_out_black_line_without_cs():
     drive_inches(40, 30)
 
 
-def drive_out_black_line_with_cs(raise_side=False):
+def drive_out_black_line_with_cs(raise_side=True):
     # extend lowwer bar two studs and add lift after placement of tan blocks, lower it again and lift after earthquake
     #drive_inches(5, 15)
     # Use gyro
@@ -737,13 +726,6 @@ def drive_out_black_line_with_cs(raise_side=False):
         follow_line_inches(dist=20.5, speed=30, edge=edge, want_rli=32)
     #drive_inches(5, 30)
     drive_inches(3, 20)
-
-def drive_out_black_line(raise_side=False):
-    if LINE_USE_COLOR_SENSOR:
-        drive_out_black_line_with_cs(raise_side=raise_side)
-    else:
-        drive_out_black_line_without_cs(raise_side=raise_side)
-
 
 def mission_tan_blocks_plus_before_20200109(gyro):
     drive_out_black_line()
@@ -798,22 +780,25 @@ def mission_tan_blocks_plus(gyro):
 
     # Drives out for a good start, then folows the black line to the red circle.
     # Leaves red blocks and train(M11) in circle.
-    drive_out_black_line(raise_side=True)
+    drive_out_black_line_with_cs(raise_side=True)
 
-    # Get pointed toward the tan circle
+    # Get pointed toward the black line
+    # Back hits ramp if turn all at once
     my_turn_left(speed=15, angle=20)
     drive_inches(4, 20)
     my_turn_left(speed=15, angle=10)
     align_accurate(10, num_passes=3)
 
-    # forward to tan circle
+    # how far tan circle is from black line
     tan_dist = 10
     drive_inches(tan_dist, 30)
     my_turn_left(20, 90)
+    # get closer to black line
     drive_inches(2, 20)
     align_color("White")
     # Stop at the line and goes a little bit further.
     align_accurate(10, num_passes=3)
+    # push to tan circle and come back a little less for elevator
     tan_push = 5.25
     drive_inches(tan_push, 20)
     drive_inches(-tan_push + 0.5, 20)
@@ -821,7 +806,9 @@ def mission_tan_blocks_plus(gyro):
     # M08_Elevator
     my_turn_right(20, 90)
     # flip the elevator
+    # already came tan_dist from the black line
     drive_inches(19 - tan_dist, 40)
+    # lift bar over elevator and back up
     lifter.on_for_rotations(50, 1, brake=False)
     drive_inches(-10, speed=20)
     lifter.on_for_rotations(-50, 1, brake=False)
@@ -858,6 +845,7 @@ def mission_tan_blocks_plus(gyro):
 
     # M01 Elevated Places
     # align on line perp to ramp line
+    # watch out for the lettering over white
     my_turn_left(speed=20, angle=180)
     align_accurate(10, num_passes=3)
     # get color sensors away from black line
@@ -877,6 +865,7 @@ def mission_tan_blocks_plus(gyro):
     # The Big Ending
     align_accurate(10, num_passes=2)
     drive_inches(-2, 20)
+    # drive with gyro cause slides on ramp
     drive_inches_gyro(46, 40)
 
     # TODO Lock The Motors
