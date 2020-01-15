@@ -173,7 +173,8 @@ def follow_line_inches(dist=1, speed=10, want_rli=65, edge="right"):
 
     log.info("Drove (line) rot1={} rot2={}".format(r1_rotations, r2_rotations))
 
-def drive_inches_gyro(dist, speed=20):
+def drive_inches_gyro(dist, speed=20, factor=1):
+    # wheel power +-factor for each degree off
     m1 = LargeMotor(OUTPUT_A)
     m2 = LargeMotor(OUTPUT_D)
 
@@ -192,8 +193,6 @@ def drive_inches_gyro(dist, speed=20):
         t = "angle: {}".format(angle)
         show(t)
         diff = angle - angle_start
-        # wheel power +-2 for each degree off
-        factor = 1
         # fix if turns the wrong way
         bias = diff * factor
         m1.on(speed - bias)
@@ -286,12 +285,47 @@ def align_color(c_name, speed=10):
             right_running = False
 
 
+# Don't stop on color2 until at least one
+# sensor found color1
+def align_color_via_color(color2, color1, speed=10):
+    m1 = LargeMotor(OUTPUT_A)
+    m2 = LargeMotor(OUTPUT_D)
+    m1.on(speed)
+    m2.on(speed)
+    left_found_color1 = False
+    right_found_color1 = False
+    left_running = True
+    right_running = True
+    while left_running or right_running:
+        name_l = color_left.color_name
+        name_r = color_right.color_name
+        t = "{} {}".format(name_l, name_r)
+        show(t)
+        if left_found_color1 or right_found_color1:
+            if name_l == color2:
+                m1.off()
+                left_running = False
+        else:
+            if name_l == color1:
+                left_found_color1 = True
+        if right_found_color1 or left_found_color1:
+            if name_r == color2:
+                m2.off()
+                right_running = False
+        else:
+            if name_r == color1:
+                right_found_color1 = True
+
+
 def align_black(speed=10):
     align_color("Black", speed)
 
 
-def align_accurate(speed=10, num_passes=2):
-    align_color("Black", speed)
+def align_accurate(speed=10, num_passes=2, white_first=True):
+    if white_first:
+        align_color_via_color("Black", "White", speed)
+    else:
+        align_color("Black")
     for i in range(num_passes - 1):
         align_color("White", -speed / 2)
         align_color("Black", speed / 2)
@@ -616,7 +650,7 @@ def big_O_by_crane(gyro):
     # This is driving to the crane and doing two missions: M02 and M12.
 
     # Drives out quickly and then slower for more accuracy.
-    drive_inches_gyro(dist=25, speed=20)
+    drive_inches_gyro(dist=25, speed=20, factor=1)
     drive_inches_gyro(1.5, 10)
     time.sleep(1.0)
     drive_inches(-2, 20)
@@ -637,34 +671,6 @@ def big_O_by_crane(gyro):
     my_turn_left(40, 80)
 
 
-def red_ending(gyro):
-    """
-    Setup the robot with the wheels on the 5th hashmark.
-    """
-    drive_out_black_line()
-    # @ or near
-    my_turn_left(15, 30)
-    drive_inches(1, 10)
-    align_color("White")
-    # first align
-    align_accurate(10, num_passes=3)
-    drive_inches(5, 30)
-    my_turn_left(15, 90)
-    align_color("White")
-    align_accurate(10, num_passes=3)
-    # SECOND align
-    # drive_inches(-3.5, 10)
-    my_turn_left(15, 65)
-    drive_inches(11, 20)
-    lifter.on_for_degrees(50, 650, brake=False)
-    # End of the blocks, starting the bridge
-    drive_inches(-7.5, 20)
-    my_turn_right(15, 65)
-    # The Big Ending
-    drive_inches(10, 30)
-    align_accurate(10, num_passes=2)
-    drive_inches(-6, 20)
-    drive_inches(35, 35)
 
 
 def circle_straight(gyro):
@@ -679,15 +685,6 @@ def circle_straight(gyro):
     s.beep()
     s.beep()
     s.beep()
-
-
-def drive_out_black_line_without_cs():
-    # extend lowwer bar two studs and add lift after placement of tan blocks, lower it again and lift after earthquake
-    drive_inches(5, 15)
-    # my_turn_right(15, 65.75)
-    my_turn_right(15, 90)
-    # Drive almost to white
-    drive_inches(40, 30)
 
 
 def drive_out_black_line_with_cs(raise_side=True):
@@ -705,14 +702,9 @@ def drive_out_black_line_with_cs(raise_side=True):
     extra_turn = -(gyro_start - gyro_zero) + 1
     my_turn_right(15, 90 + extra_turn)
 
-    # Drive almost to white
     # first get to line to follow
-    # for left edge
-    # edge = "left"
-    #drive_inches(12.5, 30)
-    # for right edge
     edge = "right"
-    drive_inches(11.7, 30)
+    drive_inches_gyro(11.7, 30)
 
     # 20.5 along line
     # do we lift side pusher on way out?
@@ -727,52 +719,6 @@ def drive_out_black_line_with_cs(raise_side=True):
     #drive_inches(5, 30)
     drive_inches(3, 20)
 
-def mission_tan_blocks_plus_before_20200109(gyro):
-    drive_out_black_line()
-    my_turn_left(15, 30)
-    align_color("White")
-    align_accurate(10, num_passes=3)
-    drive_inches(9, 30)
-    my_turn_left(15, 90)
-    align_color("White")
-    align_accurate(10, num_passes=3)
-    drive_inches(4.75, 20)
-    drive_inches(-4.75, 20)
-    # M08_Elevator
-    my_turn_right(15, 90)
-    drive_inches(10, 40)
-    lifter.on_for_rotations(50, 1, brake=False)
-    drive_inches(-10, speed=20)
-    lifter.on_for_rotations(-50, 1, brake=False)
-    # Mo9_safety factor
-    turn_extra = 17
-    my_turn_right(15, 30 + turn_extra)
-    lifter.on_for_degrees(50, 120, brake=False)
-    drive_inches(5.25, 20)
-    # swing front pointer 20 left, (20 right to straighten then) 20 right
-    # tjs
-    swing_turn = 16
-    my_turn_left(15, turn_extra)
-    lifter.on_for_degrees(-50, 90, brake=False)
-    my_turn_left(15, swing_turn / 2)
-    # my_turn_right(15, swing_turn * 2)
-    # my_turn_right(15, swing_turn)
-    drive_inches(-1, 20)
-    my_turn_right(15, swing_turn + 90)
-    lifter.on_for_degrees(50, 90, brake=False)
-    drive_inches(4, 30)
-    my_turn_left(15, 45)
-    drive_inches(-2, 30)
-    my_turn_left(15, 55)
-    drive_inches(-65, 60)
-    drive_inches(1, 30)
-    my_turn_right(50, 75)
-
-    # drive_inches(43, -46)
-    # my_turn_right(15, 27)
-    # drive_inches(20, -40)
-    # my_turn_left(80, 80)
-
 
 def mission_tan_blocks_plus(gyro):
 
@@ -785,7 +731,7 @@ def mission_tan_blocks_plus(gyro):
     # Get pointed toward the black line
     # Back hits ramp if turn all at once
     my_turn_left(speed=15, angle=20)
-    drive_inches(4, 20)
+    drive_inches(3, 20)
     my_turn_left(speed=15, angle=10)
     align_accurate(10, num_passes=3)
 
@@ -795,11 +741,12 @@ def mission_tan_blocks_plus(gyro):
     my_turn_left(20, 90)
     # get closer to black line
     drive_inches(2, 20)
-    align_color("White")
+    # align will watch for one sensor to see white on way
+    #align_color("White")
     # Stop at the line and goes a little bit further.
     align_accurate(10, num_passes=3)
     # push to tan circle and come back a little less for elevator
-    tan_push = 5.25
+    tan_push = 5.35
     drive_inches(tan_push, 20)
     drive_inches(-tan_push + 0.5, 20)
 
@@ -815,26 +762,27 @@ def mission_tan_blocks_plus(gyro):
 
     # M09_safety factor
     turn_extra = 12
-    my_turn_right(20, 30 + turn_extra)
+    my_turn_right(15, 30 + turn_extra)
     lifter.on_for_degrees(50, 120, brake=False)
     drive_inches(6, 20)
     # swing front pointer 20 left, (20 right to straighten then) 20 right
     swing_turn = 20
-    my_turn_left(20, turn_extra + swing_turn / 2)
+    swing_first = 5
+    my_turn_left(15, turn_extra + swing_first)
     # push building support down
     lifter.on_for_degrees(-50, 90, brake=False)
     building_drive_more = 0.25
     drive_inches(building_drive_more, 10)
-    my_turn_left(15, swing_turn / 2)
+    my_turn_left(15, swing_turn - swing_first)
     drive_inches(-1 - building_drive_more, 20)
 
     # M07 Swing
     # point towards the swing
-    my_turn_right(20, swing_turn + 90)
+    my_turn_right(20, swing_turn + 90 - 2)
     # lift arm to push swing
     lifter.on_for_degrees(50, 90, brake=False)
     # drive to swing
-    drive_inches(3.5, 30)
+    drive_inches(4, 30)
     # push swing by turning a little
     my_turn_left(20, 30)
     my_turn_right(20, 15)
@@ -846,8 +794,8 @@ def mission_tan_blocks_plus(gyro):
     # M01 Elevated Places
     # align on line perp to ramp line
     # watch out for the lettering over white
-    my_turn_left(speed=20, angle=180)
-    align_accurate(10, num_passes=3)
+    my_turn_left(speed=20, angle=185)
+    align_accurate(10, num_passes=3, white_first=False)
     # get color sensors away from black line
     drive_inches(1.5, 20)
     # get to ramp line
@@ -867,6 +815,11 @@ def mission_tan_blocks_plus(gyro):
     drive_inches(-2, 20)
     # drive with gyro cause slides on ramp
     drive_inches_gyro(46, 40)
+    s.set_volume(100)
+    play_sound = 0
+    while play_sound < 3:
+        s.play_file('sound/crazy-mono.wav')
+        play_sound = play_sound + 1
 
     # TODO Lock The Motors
 
