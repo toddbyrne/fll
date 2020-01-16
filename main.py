@@ -86,19 +86,33 @@ class WideWheel(Wheel):
 
 
 tank_drive = MoveTank(L_MOTOR, R_MOTOR)
-# 180 at 15 is about 3-5 degrees too much
-# tank_diff = MoveDifferential(L_MOTOR, R_MOTOR, WideWheel, 146.75)
-# Works great at 180 and speed 15 at 143
-# was turning too much on 1/5
-# tank_diff = MoveDifferential(L_MOTOR, R_MOTOR, WideWheel, 143)
-# was turning too much on 1/6
-# tank_diff = MoveDifferential(L_MOTOR, R_MOTOR, WideWheel, 141.5)
+# keep fixing 141 mm between wheels to use for turns
 tank_diff = MoveDifferential(L_MOTOR, R_MOTOR, WideWheel, 141)
 
 
 def show(text):
     disp.reset_console()
     disp.text_at(text, 1, 1)
+
+
+def inches_to_mill(inches):
+    return 25.4 * inches
+
+
+def inches_to_rotations(distance):
+    # wheel diameter is 43.2mm (?), 68.8 for larger
+    circum_inches = WHEEL_DIAMETER * 3.14 / 2.54
+    rotations = distance / circum_inches
+
+    return rotations
+
+
+def drive_inches(distance, speed=20):
+    rotations = inches_to_rotations(distance)
+    speed = -speed if IS_INVERTED else speed
+    # tank_drive.on_for_rotations(SpeedPercent(speed), SpeedPercent(speed), rotations)
+    tank_diff.on_for_distance(SpeedPercent(
+        speed), inches_to_mill(distance))
 
 
 # test line follow edge
@@ -260,6 +274,7 @@ def align_color(c_name, speed=10):
             right_running = False
 
 
+# Try to fix finding black on the picture
 # Don't stop on color2 until at least one
 # sensor found color1
 def align_color_via_color(color2, color1, speed=10):
@@ -267,8 +282,7 @@ def align_color_via_color(color2, color1, speed=10):
     m2 = LargeMotor(OUTPUT_D)
     m1.on(speed)
     m2.on(speed)
-    left_found_color1 = False
-    right_found_color1 = False
+    found_color1 = False
     left_running = True
     right_running = True
     while left_running or right_running:
@@ -276,22 +290,24 @@ def align_color_via_color(color2, color1, speed=10):
         name_r = color_right.color_name
         t = "{} {}".format(name_l, name_r)
         show(t)
-        if left_found_color1 or right_found_color1:
+        if found_color1:
             if name_l == color2:
                 m1.off()
                 left_running = False
         else:
             if name_l == color1:
-                left_found_color1 = True
-        if right_found_color1 or left_found_color1:
+                found_color1 = True
+        if found_color1:
             if name_r == color2:
                 m2.off()
                 right_running = False
         else:
             if name_r == color1:
-                right_found_color1 = True
+                found_color1 = True
 
 
+# drive to black line
+# drive to white and back again to get straighter
 def align_accurate(speed=10, num_passes=2, white_first=True):
     if white_first:
         align_color_via_color("Black", "White", speed)
@@ -388,6 +404,8 @@ def turn_degrees_gyro(gyro, deg, speed=20):
     log.info("stopping")
 
 
+# need to switch to the gyro sensor when we pushed
+# heavy blocks
 def my_turn_left(speed=20, angle=90):
     if TURN_WITH_GYRO:
         turn_degrees_gyro(gyro, -angle, speed)
@@ -407,59 +425,6 @@ def turn_degrees(gyro, deg, speed=15):
         my_turn_right(speed, deg)
     else:
         my_turn_left(speed, -deg)
-
-
-def inches_to_mill(inches):
-    return 25.4 * inches
-
-
-def inches_to_rotations(distance):
-    # wheel diameter is 43.2mm (?), 68.8 for larger
-    circum_inches = WHEEL_DIAMETER * 3.14 / 2.54
-    rotations = distance / circum_inches
-
-    return rotations
-
-
-def drive_inches(distance, speed=20):
-    rotations = inches_to_rotations(distance)
-    speed = -speed if IS_INVERTED else speed
-    # tank_drive.on_for_rotations(SpeedPercent(speed), SpeedPercent(speed), rotations)
-    tank_diff.on_for_distance(SpeedPercent(
-        speed), inches_to_mill(distance))
-
-
-def mission_2_crane(gyro):
-    drive_inches(12)
-    # 6 inches out 6 inches over
-    turn_degrees(gyro, 45)
-    drive_inches(7*1.414)
-    turn_degrees(gyro, -45)
-    drive_inches(9)
-    drive_inches(6, -20)
-    turn_degrees(gyro, -45)
-    drive_inches(3*1.414)
-    turn_degrees(gyro, 45)
-    drive_inches(4)
-
-
-def mission_white_blocks(gyro):
-
-    drive_inches(.85, speed=12)
-    # turn_degrees(gyro, -72, 15)
-    my_turn_right(15, 69.25)
-    drive_inches(61, 30)
-    # LIFTER.on_for_rotations(10, 1)
-    drive_inches(-4, 30)
-    # LIFTER.on_for_rotations(10, -1, False)
-
-    # turn_degrees(gyro, 180, 7)
-
-    # turn_degrees(gyro, -85, 35)
-
-    # turn_degrees(gyro, -85, 35)
-
-    # drive_inches(26)
 
 
 # Program 1
@@ -489,6 +454,8 @@ def big_O_by_crane(gyro):
     my_turn_left(40, 80)
 
 
+# quick if we have extra time
+# push some blocks at 45 degree black circle
 def circle_straight(gyro):
     drive_inches(16, 30)
     lifter.on_for_rotations(50, 1)
@@ -671,6 +638,7 @@ def gyro_reset(gyro):
     gyro.reset()
     time.sleep(GYRO_RESET_WAIT)
 
+
 def drop_frame(gyro):
     """
     Lowers side motor in between missions
@@ -679,19 +647,37 @@ def drop_frame(gyro):
     side_motor.on_for_degrees(speed=20, degrees=-109)
 
 
-progs = [
+def mission_2_crane(gyro):
+    drive_inches(12)
+    # 6 inches out 6 inches over
+    turn_degrees(gyro, 45)
+    drive_inches(7*1.414)
+    turn_degrees(gyro, -45)
+    drive_inches(9)
+    drive_inches(6, -20)
+    turn_degrees(gyro, -45)
+    drive_inches(3*1.414)
+    turn_degrees(gyro, 45)
+    drive_inches(4)
 
-    ("m: Big O Crane", big_O_by_crane),
-    ("m: drop frame", drop_frame),
-    ("m: tan blocks", mission_tan_blocks_plus),
-    ("m: circle_straight", circle_straight),
-    # ("m: ReD EnDiNg", red_ending),
-    ("gyro_reset", gyro_reset),
-    # ("m: turn_test", turn_test),
-    # ("m: white blocks", mission_white_blocks),
-    # ("m: red blocks", mission_red_blocks),
-    # ("m: 2 crane", mission_2_crane),
-]
+
+def mission_white_blocks(gyro):
+
+    drive_inches(.85, speed=12)
+    # turn_degrees(gyro, -72, 15)
+    my_turn_right(15, 69.25)
+    drive_inches(61, 30)
+    # LIFTER.on_for_rotations(10, 1)
+    drive_inches(-4, 30)
+    # LIFTER.on_for_rotations(10, -1, False)
+
+    # turn_degrees(gyro, 180, 7)
+
+    # turn_degrees(gyro, -85, 35)
+
+    # turn_degrees(gyro, -85, 35)
+
+    # drive_inches(26)
 
 
 # called when a button is pushed
@@ -724,6 +710,21 @@ def change(changed_buttons):
         lifter.on_for_degrees(100, 15, brake=True)
     logging.info('Done is: ' + str(done))
     return done
+
+
+progs = [
+
+    ("m: Big O Crane", big_O_by_crane),
+    ("m: drop frame", drop_frame),
+    ("m: tan blocks", mission_tan_blocks_plus),
+    ("m: circle_straight", circle_straight),
+    # ("m: ReD EnDiNg", red_ending),
+    ("gyro_reset", gyro_reset),
+    # ("m: turn_test", turn_test),
+    # ("m: white blocks", mission_white_blocks),
+    # ("m: red blocks", mission_red_blocks),
+    # ("m: 2 crane", mission_2_crane),
+]
 
 
 def run_program(gyro):
