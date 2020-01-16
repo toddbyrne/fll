@@ -42,6 +42,7 @@ color_right = ColorSensor(INPUT_3)
 Please depending on the robot change the number below:                                <<<       IMPORTANT!!!!                                         HEY!!!!
 WHICH_ROBOT = 0 is if the robot has one color sensor                               <<<<<<OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 WHICH_ROBOT = 1 is if the robot has two color sensor                                  <<<                          LOOK!!!!
+WHICH_ROBOT = 2 is the final robot design
 PLEASE AND THANK YOU
 """
 WHICH_ROBOT = 2
@@ -96,30 +97,24 @@ tank_diff = MoveDifferential(L_MOTOR, R_MOTOR, WideWheel, 141)
 
 
 def show(text):
-    # disp.text_grid(t, x=5, y=5)
     disp.reset_console()
-    # 0 = left, 80 = far right?
-    # align="center" doesn't seem to work
-    lr = 0
-    down = 0
-    # down = 50
     disp.text_at(text, 1, 1)
-    # disp.draw.text((lr, down), text, font=f, align="left")
-    # disp.update()
 
 
+# test line follow edge
 def follow_line(speed=10, want_rli=65, edge="right"):
-    m1 = LargeMotor(OUTPUT_A)
-    m2 = LargeMotor(OUTPUT_D)
+    m1 = LargeMotor(L_MOTOR)
+    m2 = LargeMotor(R_MOTOR)
+    # drive forever
     while True:
+        # right color sensor
         rli = color_left.reflected_light_intensity
         t = "rli: {}".format(rli)
         show(t)
         diff = rli - want_rli
-        # bigger adjustment for faster speed?
-        # factor = speed / 100.0
         # light difference is +/- 40 but
         # motor difference should be small.
+        # divide by 20
         factor = 0.05
         bias = diff * factor
         if edge == "left":
@@ -128,12 +123,13 @@ def follow_line(speed=10, want_rli=65, edge="right"):
         m2.on(speed + bias)
         time.sleep(0.01)
 
+
+# Timothy
+# updated follow_line to stop after dist
 # use right color sensor
-
-
 def follow_line_inches(dist=1, speed=10, want_rli=65, edge="right"):
-    m1 = LargeMotor(OUTPUT_A)
-    m2 = LargeMotor(OUTPUT_D)
+    m1 = LargeMotor(L_MOTOR)
+    m2 = LargeMotor(R_MOTOR)
 
     rotations_total = inches_to_rotations(dist)
 
@@ -144,14 +140,14 @@ def follow_line_inches(dist=1, speed=10, want_rli=65, edge="right"):
 
     rotations_traveled = 0
     while rotations_traveled < rotations_total:
+        # right color sensor
         rli = color_right.reflected_light_intensity
         t = "rli: {}\n{}\n{}".format(rli, rotations_traveled, rotations_total)
         show(t)
         diff = rli - want_rli
-        # bigger adjustment for faster speed?
-        # factor = speed / 100.0
         # light difference is +/- 40 but
         # motor difference should be small.
+        # divide by 40
         factor = 0.025
         bias = diff * factor
         if edge == "left":
@@ -168,15 +164,20 @@ def follow_line_inches(dist=1, speed=10, want_rli=65, edge="right"):
         log.info("rli: {} {} {}".format(
             rli, rotations_traveled, rotations_total))
 
+    # stop
     m1.off()
     m2.off()
 
     log.info("Drove (line) rot1={} rot2={}".format(r1_rotations, r2_rotations))
 
+# Spencer
+# like follow_line_inches but uses gyro
+# Everett: added factor as parameter
+# 5 was crazy. 1.5 didn't work.
 def drive_inches_gyro(dist, speed=20, factor=1):
     # wheel power +-factor for each degree off
-    m1 = LargeMotor(OUTPUT_A)
-    m2 = LargeMotor(OUTPUT_D)
+    m1 = LargeMotor(L_MOTOR)
+    m2 = LargeMotor(R_MOTOR)
 
     rotations_total = inches_to_rotations(dist)
 
@@ -185,6 +186,7 @@ def drive_inches_gyro(dist, speed=20, factor=1):
     r1_rotations = 0
     r2_rotations = 0
 
+    # subtract amount to get right amount from gyro
     angle_start = gyro.value()
 
     rotations_traveled = 0
@@ -192,6 +194,7 @@ def drive_inches_gyro(dist, speed=20, factor=1):
         angle = gyro.value()
         t = "angle: {}".format(angle)
         show(t)
+        # zero is straight
         diff = angle - angle_start
         # fix if turns the wrong way
         bias = diff * factor
@@ -213,23 +216,12 @@ def drive_inches_gyro(dist, speed=20, factor=1):
     log.info("Drove (gyro) rot1={} rot2={}".format(r1_rotations, r2_rotations))
 
 
-def follow_line_left():
-    follow_line(speed=10, want_rli=65, edge="left")
-
-
-def follow_line_left_wrap(gyro):
-    follow_line(speed=10, want_rli=65, edge="left")
-
-
-def follow_line_right():
-    follow_line(speed=10, want_rli=65, edge="right")
-
 # Needs 2 color sensors!!!
-
-
+# stop when intensity is less than threshold
+# only used to test
 def align_black_intensity(speed=10, black_thresh=20):
-    m1 = LargeMotor(OUTPUT_A)
-    m2 = LargeMotor(OUTPUT_D)
+    m1 = LargeMotor(L_MOTOR)
+    m2 = LargeMotor(R_MOTOR)
     m1.on(speed)
     m2.on(speed)
     left_running = True
@@ -247,24 +239,7 @@ def align_black_intensity(speed=10, black_thresh=20):
             right_running = False
 
 
-def align_left(c_name, speed=10):
-    m1 = LargeMotor(OUTPUT_A)
-    m2 = LargeMotor(OUTPUT_D)
-    m1.on(speed)
-    m2.on(speed)
-    left_running = True
-    right_running = True
-    while left_running:
-        name_l = color_left.color_name
-        name_r = color_right.color_name
-        t = "{} {}".format(name_l, name_r)
-        show(t)
-        if name_l == c_name:
-            m1.off()
-            m2.off()
-            left_running = False
-
-
+# drive until both color sensors see black or white
 def align_color(c_name, speed=10):
     m1 = LargeMotor(OUTPUT_A)
     m2 = LargeMotor(OUTPUT_D)
@@ -317,10 +292,6 @@ def align_color_via_color(color2, color1, speed=10):
                 right_found_color1 = True
 
 
-def align_black(speed=10):
-    align_color("Black", speed)
-
-
 def align_accurate(speed=10, num_passes=2, white_first=True):
     if white_first:
         align_color_via_color("Black", "White", speed)
@@ -331,11 +302,12 @@ def align_accurate(speed=10, num_passes=2, white_first=True):
         align_color("Black", speed / 2)
 
 
+# Testing
+# drive to a black line
 def align_forever(gyro=None):
     while True:
         s.beep()
-        # follow_line(speed=20, edge="left")
-        align_black(speed=10)
+        align_color("Black", speed=10)
         s.beep()
         while not b.any():
             rli_left = color_left.reflected_light_intensity
@@ -345,159 +317,26 @@ def align_forever(gyro=None):
             time.sleep(0.1)
 
 
-def align_once(gyro=None):
-    s.beep()
-    # follow_line(speed=20, edge="left")
-    align_accurate(speed=10)
-    s.beep()
-    while not b.any():
-        name_l = color_left.color_name
-        name_r = color_right.color_name
-        rli_left = -1
-        rli_right = -1
-        t = "rli: {} {}\n{} {}".format(rli_left, rli_right, name_l, name_r)
-        show(t)
-        time.sleep(0.1)
-
-
-def display_rfi():
-    while not b.any():
-        rli = color_left.reflected_light_intensity
-        t = "rli: {}".format(rli)
-        show(t)
-        logging.info(t)
-        time.sleep(0.1)
-
-
-def beep_and_wait_for_button():
-    # Don't do anything else
-    s.beep()
-    while not b.any():
-        time.sleep(0.1)
-    s.beep()
-
-
+# try running a motor
 def motor_test1():
     m = LargeMotor(OUTPUT_D)
     m.on_for_rotations(SpeedPercent(75), 5)
     # hoi bois!!!!
 
 
-def gyro_test():
-    m1 = LargeMotor(OUTPUT_A)
-    m2 = LargeMotor(OUTPUT_D)
-    m1.on(20)
-    m2.on(-20)
-    gyro.wait_until_angle_changed_by(90)
-    m1.off()
-    m2.off()
-
-
-def long_gyro_test():
-    s.beep()
-    show("push a button")
-    # b.wait_for_pressed([Button.enter, Button.right])
-    # b.wait_for_bump([Button.enter, Button.right])
-    b.wait_for_pressed(["enter"])
-    s.beep()
-    gyro_test()
-    # motor_test()
-    # for i in range(50):
-    # Loop until button pressed, displaying gyro angle
-    while not b.any():
-        ang = gyro.angle
-        t = "Angle: {}".format(ang)
-        show(t)
-        logging.info(t)
-        time.sleep(0.1)
-
-
 # gyro: gyro sensor
 # deg: degrees to turn (positive is clockwise)
 # speed: motor speed 0-100 (must be positive)
-def turn_degrees_gyro_orig(gyro, deg, speed=20, do_correction=True):
-    gyro.mode = GyroSensor.MODE_GYRO_ANG
-
-    if abs(deg) <= 1:
-        return
-
-    if deg > 0:
-        lspeed = speed
-    else:
-        lspeed = -speed
-    turn_about_center = True
-    if turn_about_center:
-        rspeed = -lspeed
-    else:
-        rspeed = 0
-    time.sleep(0.5)
-    gyro.reset()
-
-    start = gyro.value()
-    log.info("gyro inital value: {}".format(start))
-    log.info("gyro in mode: {}".format(gyro.mode))
-    # log.info("gyro inital value after mode set: {}".format(gyro.value))
-
-    tank_drive.on(lspeed, rspeed)
-    log.info("turning {}: {} {}".format(deg, lspeed, rspeed))
-
-    if do_correction:
-        turn_guess = abs(deg)
-    else:
-        turn_guess = abs(deg) - 9
-    gyro.wait_until_angle_changed_by(abs(turn_guess))
-    tank_drive.off()
-    time.sleep(0.5)
-
-    final = gyro.value()
-
-    log.info("gyro final value: {}".format(final))
-    log.info("angle: {} actual: {}".format(deg, final - start))
-    log.info("stopping")
-
-    if do_correction:
-        # Go back the amount we missed or went over.
-        correction = final - deg
-        log.info("correction: {}".format(correction))
-
-        if abs(correction) <= 1:
-            pass
-        else:
-            if deg > 0:
-                lspeed = 5
-            else:
-                lspeed = -5
-            turn_about_center = True
-            if turn_about_center:
-                rspeed = -lspeed
-            else:
-                rspeed = 0
-
-            tank_drive.on(rspeed, lspeed)
-            log.info("C: turning {}: {} {}".format(deg, lspeed, rspeed))
-            log.info("C: gyro in mode: {}".format(gyro.mode))
-            log.info("C: gyro inital value: {}".format(gyro.value()))
-            gyro.mode = GyroSensor.MODE_GYRO_ANG
-            log.info("C: gyro inital value after mode set: {}".format(gyro.value()))
-
-            gyro.wait_until_angle_changed_by(abs(correction)-1)
-            tank_drive.off()
-            time.sleep(0.5)
-            log.info("C: gyro final value: {}".format(gyro.value()))
-
-# do_correction is ignored
-def turn_degrees_gyro(gyro, deg, speed=20, do_correction=True):
+def turn_degrees_gyro(gyro, deg, speed=20):
     #gyro.mode = GyroSensor.MODE_GYRO_ANG
 
     if deg > 0:
         lspeed = speed
     else:
         lspeed = -speed
-    turn_about_center = True
-    if turn_about_center:
-        rspeed = -lspeed
-    else:
-        rspeed = 0
+    rspeed = -lspeed
+
+    # reset crashes!!
     #time.sleep(0.5)
     #gyro.reset()
 
@@ -551,14 +390,14 @@ def turn_degrees_gyro(gyro, deg, speed=20, do_correction=True):
 
 def my_turn_left(speed=20, angle=90):
     if TURN_WITH_GYRO:
-        turn_degrees_gyro(gyro, -angle, speed, do_correction=False)
+        turn_degrees_gyro(gyro, -angle, speed)
     else:
         tank_diff.turn_left(speed, angle)
 
 
 def my_turn_right(speed=20, angle=90):
     if TURN_WITH_GYRO:
-        turn_degrees_gyro(gyro, angle, speed, do_correction=False)
+        turn_degrees_gyro(gyro, angle, speed)
     else:
         tank_diff.turn_right(speed, angle)
 
@@ -572,19 +411,6 @@ def turn_degrees(gyro, deg, speed=15):
 
 def inches_to_mill(inches):
     return 25.4 * inches
-
-
-def move_turn():
-    tank_drive.on_for_seconds(SpeedPercent(-50), SpeedPercent(-50), 1)
-    tank_drive.on_for_seconds(SpeedPercent(-50), SpeedPercent(50), 0.65)
-
-
-def inches_to_rotations_old(distance):
-    # wheel diameter is 43.2mm (?)
-    circum_inches = 4.32 * 3.14 / 2.54
-    rotations = distance / circum_inches
-
-    return rotations
 
 
 def inches_to_rotations(distance):
@@ -601,11 +427,6 @@ def drive_inches(distance, speed=20):
     # tank_drive.on_for_rotations(SpeedPercent(speed), SpeedPercent(speed), rotations)
     tank_diff.on_for_distance(SpeedPercent(
         speed), inches_to_mill(distance))
-
-
-def drive_inches_L_N_K_(distance, speed=30):
-    speed = -speed if IS_INVERTED else speed
-    target = gyro.angle
 
 
 def mission_2_crane(gyro):
@@ -641,10 +462,7 @@ def mission_white_blocks(gyro):
     # drive_inches(26)
 
 
-def down(gyro):
-    lifter.on_for_degrees(-50, 15, brake=False)
-
-
+# Program 1
 def big_O_by_crane(gyro):
 
     # This is driving to the crane and doing two missions: M02 and M12.
@@ -671,8 +489,6 @@ def big_O_by_crane(gyro):
     my_turn_left(40, 80)
 
 
-
-
 def circle_straight(gyro):
     drive_inches(16, 30)
     lifter.on_for_rotations(50, 1)
@@ -687,19 +503,19 @@ def circle_straight(gyro):
     s.beep()
 
 
-def drive_out_black_line_with_cs(raise_side=True):
+# use the color sensor to drive down the board
+def drive_out_black_line_with_cs():
     # extend lowwer bar two studs and add lift after placement of tan blocks, lower it again and lift after earthquake
-    #drive_inches(5, 15)
-    # Use gyro
+    # Use gyro cause weight turns us
     gyro_zero = gyro.value()
     drive_inches_gyro(5, 15)
     # lots of weight on left so read how much turned
-    # starting at 0
     time.sleep(0.01)
     gyro_start = gyro.value()
-    log.info("Initial gyro angle: {}".format(gyro_start))
-    #extra_turn = -gyro_start + 1
-    extra_turn = -(gyro_start - gyro_zero) + 1
+    turned = gyro_start - gyro_zero
+    log.info("Initial gyro angle: {}".format(turned))
+    # undo the turn and an extra degree to not miss the line
+    extra_turn = -turned + 1
     my_turn_right(15, 90 + extra_turn)
 
     # first get to line to follow
@@ -707,16 +523,13 @@ def drive_out_black_line_with_cs(raise_side=True):
     drive_inches_gyro(11.7, 30)
 
     # 20.5 along line
-    # do we lift side pusher on way out?
-    if raise_side:
-        # drive a little lift then drive the rest
-        follow_line_inches(dist=18, speed=30, edge=edge, want_rli=32)
-        # lift
-        side_motor.on_for_degrees(speed=20, degrees=109)
-        follow_line_inches(dist=2.5, speed=30, edge=edge, want_rli=32)
-    else:
-        follow_line_inches(dist=20.5, speed=30, edge=edge, want_rli=32)
-    #drive_inches(5, 30)
+    # drive a little lift then drive the rest
+    follow_line_inches(dist=18, speed=30, edge=edge, want_rli=32)
+    # lift
+    side_motor.on_for_degrees(speed=20, degrees=109)
+    follow_line_inches(dist=2.5, speed=30, edge=edge, want_rli=32)
+
+    # a little more where it bends
     drive_inches(3, 20)
 
 
@@ -726,7 +539,7 @@ def mission_tan_blocks_plus(gyro):
 
     # Drives out for a good start, then folows the black line to the red circle.
     # Leaves red blocks and train(M11) in circle.
-    drive_out_black_line_with_cs(raise_side=True)
+    drive_out_black_line_with_cs()
 
     # Get pointed toward the black line
     # Back hits ramp if turn all at once
@@ -741,8 +554,6 @@ def mission_tan_blocks_plus(gyro):
     my_turn_left(20, 90)
     # get closer to black line
     drive_inches(2, 20)
-    # align will watch for one sensor to see white on way
-    #align_color("White")
     # Stop at the line and goes a little bit further.
     align_accurate(10, num_passes=3)
     # push to tan circle and come back a little less for elevator
@@ -842,22 +653,18 @@ def mission_red_blocks(gyro):
     my_turn_left(80, 80)
 
 
-def motor_test(gyro):
-    lifter.on_for_rotations(50, 1)
-    lifter.on_for_rotations(50, -1)
-
-
 done = False
 wait_for = None
 choice = 0
 choice_incr = 1
-turn_ang = 180
 
 
 def turn_test(gyro):
+    turn_ang = 180
     my_turn_right(15, turn_ang)
     time.sleep(5)
     my_turn_left(15, turn_ang)
+
 
 def gyro_reset(gyro):
     gyro.mode = GyroSensor.MODE_GYRO_ANG
@@ -871,21 +678,15 @@ def drop_frame(gyro):
 
     side_motor.on_for_degrees(speed=20, degrees=-109)
 
-def test_drive_straigh_gyro(gyro):
-    drive_inches_gyro(12, 20)
 
 progs = [
 
-    #("m: line", follow_line_left_wrap),
     ("m: Big O Crane", big_O_by_crane),
     ("m: drop frame", drop_frame),
     ("m: tan blocks", mission_tan_blocks_plus),
     ("m: circle_straight", circle_straight),
     # ("m: ReD EnDiNg", red_ending),
     ("gyro_reset", gyro_reset),
-    #("test_sgyro", test_drive_straigh_gyro),
-    # ("m: align",  align_once),
-    # ("m: test",  motor_test),
     # ("m: turn_test", turn_test),
     # ("m: white blocks", mission_white_blocks),
     # ("m: red blocks", mission_red_blocks),
@@ -893,10 +694,10 @@ progs = [
 ]
 
 
+# called when a button is pushed
 def change(changed_buttons):
     global done
     global choice
-    global turn_ang
     # changed_buttons is a list of
     # tuples of changed button names and their states.
     if len(changed_buttons) == 0:
@@ -924,8 +725,6 @@ def change(changed_buttons):
     logging.info('Done is: ' + str(done))
     return done
 
-# Set callback from b.process()
-
 
 def run_program(gyro):
     # This loop checks button states
@@ -940,28 +739,22 @@ def run_program(gyro):
     ang = 0
     count = 0
     while not done:
+        # reading gyro fast can break
         if count % 20 == 0:
             ang = gyro.angle
-            #ang = gyro.value()
-            #ang = 0
             count = 0
-        if True:
-            rli_left = color_left.reflected_light_intensity
-            rli_right = color_right.reflected_light_intensity
-            # t = "rli: {} {}".format(rli_left, rli_right)
-            t = "rli: {} {}\nP: {}\nA: {}\nWaiting for l button".format(
-                rli_left, rli_right, progs[choice][0], ang)
-            show(t)
+        rli_left = color_left.reflected_light_intensity
+        rli_right = color_right.reflected_light_intensity
+        # t = "rli: {} {}".format(rli_left, rli_right)
+        t = "rli: {} {}\nP: {}\nA: {}\nWaiting for l button".format(
+            rli_left, rli_right, progs[choice][0], ang)
+        show(t)
         done = change(b.buttons_pressed)
         time.sleep(0.05)
         count += 1
 
     logging.info("And done.")
     logging.info("Running {}".format(progs[choice][0]))
-
-    # added 1/9/2020
-    #gyro.reset()
-    #time.sleep(1)
 
     progs[choice][1](gyro)
     s.beep()
@@ -971,6 +764,7 @@ def run_program(gyro):
 
 if __name__ == "__main__":
     # Resets to 0, does not fix drift
+    # broken and gyro might start at 23
     time.sleep(1)
     gyro.mode = GyroSensor.MODE_GYRO_ANG
     gyro.reset()
